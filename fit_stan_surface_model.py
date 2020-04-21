@@ -2,19 +2,24 @@ from tdata.functional.sackmann import get_data
 import sys
 import numpy as np
 from os.path import join
+from os import makedirs
 from sklearn.preprocessing import LabelEncoder
 from ml_tools.stan import load_stan_model_cached
 
 
 start_year = int(sys.argv[1])
 tour = sys.argv[2]
-target_dir = '/data/cephfs/punim0592/tennis/stan_fits_surface'
+fit_relative_model = int(sys.argv[3]) == 1
+target_dir = sys.argv[4]
+makedirs(target_dir, exist_ok=True)
+
+# target_dir = '/data/cephfs/punim0592/tennis/stan_fits_surface'
 
 assert tour in ['atp', 'wta']
 
-# df = get_data(
-#     '/Users/ingramm/Projects/tennis/tennis-data/data/sackmann/tennis_atp/')
-df = get_data(f'/home/martiningram/data/tennis_{tour}', tour=tour)
+df = get_data(
+    '/Users/ingramm/Projects/tennis/tennis-data/data/sackmann/tennis_atp/')
+# df = get_data(f'/home/martiningram/data/tennis_{tour}', tour=tour)
 
 to_use = df[df['tourney_date'].dt.year >= start_year]
 
@@ -48,23 +53,31 @@ returner_ids = encoder.transform(returner_names)
 
 n_players = len(encoder.classes_)
 
-surf_enc = LabelEncoder()
+surface_names = ['Hard', 'Clay', 'Grass']
+mapping = {x: i for i, x in enumerate(surface_names)}
 
-surf_ids = surf_enc.fit_transform(to_use['surface'])
+surf_ids = np.array([mapping[x] for x in to_use['surface']])
 surf_ids = np.concatenate([surf_ids, surf_ids])
 
-model = load_stan_model_cached('surface_model.stan')
+model_name = ('surface_model.stan' if not fit_relative_model
+              else 'surface_model_relative.stan')
+
+model = load_stan_model_cached(model_name)
 
 model_data = {
     'n_matches': server_ids.shape[0],
     'n_players': len(encoder.classes_),
-    'n_surfaces': len(surf_enc.classes_),
+    'n_surfaces': len(surface_names),
     'n': n.astype(int),
     'p': p.astype(int),
     'server_id': server_ids + 1,
     'returner_id': returner_ids + 1,
     'surface_id': surf_ids + 1
 }
+
+if fit_relative_model:
+    # We want the hard court to be zero
+    model_data['surface_id'] -= 1
 
 fit_results = model.sampling(data=model_data)
 
@@ -75,4 +88,4 @@ print(fit_results,
 
 np.savez(join(target_dir, f'stan_samples_{start_year}_{tour}.npz'),
          **fit_results.extract(), player_names=encoder.classes_,
-         surface_names=surf_enc.classes_)
+         surface_names=np.array(surface_names))
