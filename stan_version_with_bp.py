@@ -1,12 +1,13 @@
+import sys
 from tdata.functional.sackmann import get_data
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 from ml_tools.stan import load_stan_model_cached
 
-df = get_data('/Users/ingramm/Projects/tennis/tennis-data/data/'
-              'sackmann/tennis_atp/')
+df = get_data('/home/martiningram/data/tennis_atp')
 
-start_year = 1990
+start_year = int(sys.argv[1])
+target_dir = '/data/cephfs/punim0592/tennis/stan_fits_serve'
 
 to_use = df[df['tourney_date'].dt.year >= start_year]
 
@@ -70,6 +71,7 @@ model_data = {
 }
 
 stan_fit_result = model.sampling(data=model_data)
-print(stan_fit_result, file=open(f'stan_results_{start_year}.txt', 'w'))
-np.savez(f'stan_fit_{start_year}.npz', player_names=encoder.classes_,
-         **stan_fit_result.extract())
+print(stan_fit_result, file=open(target_dir +
+                                 f'/stan_results_{start_year}.txt', 'w'))
+np.savez(target_dir + f'/stan_fit_{start_year}.npz',
+         player_names=encoder.classes_, **stan_fit_result.extract())

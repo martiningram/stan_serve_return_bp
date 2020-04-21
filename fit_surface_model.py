@@ -81,8 +81,9 @@ def compute_objective(elts_serve, elts_return, elts_prior_serve,
     return expected_lik - (kl_serve + kl_return)
 
 
-df = get_data(
-    '/Users/ingramm/Projects/tennis/tennis-data/data/sackmann/tennis_atp/')
+# df = get_data(
+#     '/Users/ingramm/Projects/tennis/tennis-data/data/sackmann/tennis_atp/')
+df = get_data('/home/martiningram/data/tennis_atp')
 
 to_use = df[df['tourney_date'].dt.year >= 1990]
 
@@ -179,4 +180,5 @@ def to_optimise(flat_theta):
 result = minimize(to_optimise, flat_theta.numpy().astype(np.float64),
                   method='L-BFGS-B', jac=True)
 
-np.savez('surface_model_1990', **reconstruct_np(result.x, summary))
+np.savez('surface_model_1990', players=encoder.classes_,
+         surfaces=surf_enc.classes_, **reconstruct_np(result.x, summary))

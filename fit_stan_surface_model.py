@@ -1,14 +1,20 @@
 from tdata.functional.sackmann import get_data
 import sys
 import numpy as np
+from os.path import join
 from sklearn.preprocessing import LabelEncoder
 from ml_tools.stan import load_stan_model_cached
 
 
 start_year = int(sys.argv[1])
+tour = sys.argv[2]
+target_dir = '/data/cephfs/punim0592/tennis/stan_fits_surface'
 
-df = get_data(
-    '/Users/ingramm/Projects/tennis/tennis-data/data/sackmann/tennis_atp/')
+assert tour in ['atp', 'wta']
+
+# df = get_data(
+#     '/Users/ingramm/Projects/tennis/tennis-data/data/sackmann/tennis_atp/')
+df = get_data(f'/home/martiningram/data/tennis_{tour}', tour=tour)
 
 to_use = df[df['tourney_date'].dt.year >= start_year]
 
@@ -63,7 +69,10 @@ model_data = {
 fit_results = model.sampling(data=model_data)
 
 print(fit_results,
-      file=open(f'stan_surface_model_results_{start_year}.txt', 'w'))
+      file=open(join(
+          target_dir, f'stan_surface_model_results_{start_year}_{tour}.txt'),
+          'w'))
 
-np.savez(f'stan_samples_{start_year}.npz', **fit_results.extract(),
-         player_names=encoder.classes_, surface_names=surf_enc.classes_)
+np.savez(join(target_dir, f'stan_samples_{start_year}_{tour}.npz'),
+         **fit_results.extract(), player_names=encoder.classes_,
+         surface_names=surf_enc.classes_)
